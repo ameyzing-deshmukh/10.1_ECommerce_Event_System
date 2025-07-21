@@ -23,7 +23,8 @@ public class OrderEventProducerService {
     @Autowired
     private OutboxEventRepository outboxEventRepository;
 
-    ObjectMapper objectMapper = new ObjectMapper();
+    @Autowired
+    ObjectMapper objectMapper;
 
 
     public boolean storeOrder(Order order){
@@ -45,7 +46,6 @@ public class OrderEventProducerService {
     }
 
     private void saveOrderCreatedEvent(OrderEntity orderEntity) throws JsonProcessingException {
-        objectMapper.findAndRegisterModules();
         OutboxEventEntity outboxEventEntity = new OutboxEventEntity();
             outboxEventEntity.setAggregateId(Long.valueOf(orderEntity.getOrderId()));
         outboxEventEntity.setPayload(objectMapper.writeValueAsString(orderEntity));
