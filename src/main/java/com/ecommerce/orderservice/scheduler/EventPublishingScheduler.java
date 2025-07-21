@@ -36,6 +36,7 @@ public class EventPublishingScheduler {
                 log.info(objectMapper.writeValueAsString(eventList));
                 for(OutboxEventEntity event: eventList){
                     eventProducer.publishEvent(event);
+                    event.setProcessed(true);
                 }
             }else
                 log.info("No entry yet");
@@ -43,6 +44,8 @@ public class EventPublishingScheduler {
 
            log.info(e.getMessage());
         }
+
+        outboxEventRepository.saveAll(eventList);
 
     }
 }
