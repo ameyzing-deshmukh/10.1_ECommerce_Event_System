@@ -24,7 +24,38 @@ public class InventoryService {
     @Autowired
     private ObjectMapper objectMapper;
 
-    public boolean checkInventory(String orderPlacedEvent) throws JsonProcessingException {
+    public void checkInventory(String orderPlacedEvent) throws JsonProcessingException {
+        OrderPlacedEvent orderPlacedEventObj = getOrderPlacedEventObj(orderPlacedEvent);
+        boolean isInventoryToReserve = isInventoryToReserve(orderPlacedEventObj);
+        if (isInventoryToReserve) {
+            //publish Inventory reserved event
+            log.info("++++++++Inventory reserved event is published");
+        } else {
+            //publish Inventory failed event
+            log.info("--------Failed inventory event is published");
+        }
+    }
+
+    //if inventory count is less than order count for any of the item then return false and publish inventory failed event
+    //if inventory count is greater than order count for any of the item then return true and publish inventory Reserved event
+    private boolean isInventoryToReserve(OrderPlacedEvent orderPlacedEventObj) {
+        Map<String, Integer> itemsCountMap = orderPlacedEventObj.getItemsCountMap();
+        Set<String> itemIds = itemsCountMap.keySet();
+        List<ItemInventoryEntity> itemList = itemInventoryRepo.findAllById(itemIds);
+
+        if (itemList.size() < itemIds.size()) {
+            return false;
+        }
+        for (ItemInventoryEntity itemInventory : itemList) {
+            if (itemInventory.getCount() < itemsCountMap.get(itemInventory.getItemId())) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private OrderPlacedEvent getOrderPlacedEventObj(String orderPlacedEvent) {
         OrderPlacedEvent orderPlacedEventObj = null;
         try {
             orderPlacedEventObj = objectMapper.readValue(orderPlacedEvent, OrderPlacedEvent.class);
@@ -32,27 +63,7 @@ public class InventoryService {
             log.info("Json parsing error: {}", e.getMessage());
             throw new RuntimeException(e);
         }
-        Map<String, Integer> itemsCountMap = orderPlacedEventObj.getItemsCountMap();
-        Set<String> itemIds = itemsCountMap.keySet();
-        //if inventory count is less than order count for any of the item then return false and publish inventory failed event
-        //if inventory count is greater than order count for any of the item then return true and publish inventory Reserved event
-
-        List<ItemInventoryEntity> itemList = itemInventoryRepo.findAllById(itemIds);
-        if (itemList.size() < itemIds.size()) {
-            log.info("--------Failed inventory event is published");
-            return false;
-        }
-        for (ItemInventoryEntity itemInventory : itemList) {
-            if (itemInventory.getCount() < itemsCountMap.get(itemInventory.getItemId())) {
-                //publish Inventory failed event
-                log.info("--------Failed inventory event is published");
-                return false;
-            }
-        }
-        //publish Inventory reserved event
-        log.info("++++++++Inventory reserved event is published");
-
-        return true;
+        return orderPlacedEventObj;
     }
 
     public void updateInventory() {
