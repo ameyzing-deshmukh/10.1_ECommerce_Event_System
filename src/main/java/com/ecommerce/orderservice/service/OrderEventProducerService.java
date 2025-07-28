@@ -27,11 +27,11 @@ public class OrderEventProducerService {
     ObjectMapper objectMapper;
 
 
-    public boolean storeOrder(Order order){
+    public boolean storeOrder(Order order) {
         try {
             OrderEntity orderEntity = saveOrderEntity(order);
             saveOrderCreatedEvent(orderEntity);
-        }catch(Exception ex){
+        } catch (Exception ex) {
             log.info("Exception occurred");
             log.info(ex.getMessage());
             return false;
@@ -40,14 +40,14 @@ public class OrderEventProducerService {
     }
 
     private OrderEntity saveOrderEntity(Order order) {
-        OrderEntity orderEntity = new OrderEntity(order.getUserId(), order.getTotalCost(), order.getCreatedAt(), OrderStatus.PENDING);
+        OrderEntity orderEntity = new OrderEntity(order.getUserId(), order.getTotalCost(), order.getCreatedAt(), order.getItemsCountMap(), OrderStatus.PENDING);
         orderRepository.save(orderEntity);
         return orderEntity;
     }
 
     private void saveOrderCreatedEvent(OrderEntity orderEntity) throws JsonProcessingException {
         OutboxEventEntity outboxEventEntity = new OutboxEventEntity();
-            outboxEventEntity.setAggregateId(Long.valueOf(orderEntity.getOrderId()));
+        outboxEventEntity.setAggregateId(Long.valueOf(orderEntity.getOrderId()));
         outboxEventEntity.setPayload(objectMapper.writeValueAsString(orderEntity));
         outboxEventEntity.setProcessed(false);
         outboxEventEntity.setCreatedAt(LocalDateTime.now());

@@ -6,6 +6,7 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Map;
 
 @Entity
 @Data
@@ -17,14 +18,28 @@ public class OrderEntity {
     private String userId;
     private BigDecimal totalCost;
     private LocalDateTime createdAt;
+    private Map<String, Integer> itemsCountMap;
 
     @Enumerated(EnumType.STRING)
     private OrderStatus orderStatus;
 
-    public OrderEntity(String userId, BigDecimal totalCost, LocalDateTime createdAt, OrderStatus orderStatus) {
+    public OrderEntity(String userId, BigDecimal totalCost, LocalDateTime createdAt, Map<String, Integer> itemsCountMap, OrderStatus orderStatus) {
         this.userId = userId;
         this.totalCost = totalCost;
         this.createdAt = createdAt;
+        this.itemsCountMap = itemsCountMap;
         this.orderStatus = orderStatus;
+    }
+
+    @Override
+    public String toString() {
+        return "OrderEntity{" +
+                "orderId=" + orderId +
+                ", userId='" + userId + '\'' +
+                ", totalCost=" + totalCost +
+                ", createdAt=" + createdAt +
+                ", itemsCountMap=" + itemsCountMap +
+                ", orderStatus=" + orderStatus +
+                '}';
     }
 }

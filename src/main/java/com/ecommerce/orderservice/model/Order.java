@@ -12,5 +12,5 @@ public class Order {
     private String userId;
     private BigDecimal totalCost;
     private LocalDateTime createdAt;
-    private Map<String, Integer> items;
+    private Map<String, Integer> itemsCountMap;
 }
