@@ -5,11 +5,12 @@ import lombok.Data;
 
 @Data
 public class InventoryFailedEvent extends AbstractEvent {
-    private Long orderId;
-    private String userId;
+
+    public InventoryFailedEvent() {
+        super();
+    }
 
     public InventoryFailedEvent(Long orderId, String userId) {
-        this.orderId = orderId;
-        this.userId = userId;
+        super(orderId, userId);
     }
 }

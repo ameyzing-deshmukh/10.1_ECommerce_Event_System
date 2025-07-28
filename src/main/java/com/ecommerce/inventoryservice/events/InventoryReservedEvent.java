@@ -5,11 +5,12 @@ import lombok.Data;
 
 @Data
 public class InventoryReservedEvent extends AbstractEvent {
-    private Long orderId;
-    private String userId;
+
+    public InventoryReservedEvent() {
+        super();
+    }
 
     public InventoryReservedEvent(Long orderId, String userId) {
-        this.orderId = orderId;
-        this.userId = userId;
+        super(orderId, userId);
     }
 }
