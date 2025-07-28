@@ -26,7 +26,7 @@ public class OrderEntity {
 
     @Id
     @GeneratedValue
-    private Integer orderId;
+    private Long orderId;
     private String userId;
     private BigDecimal totalCost;
 
@@ -37,6 +37,9 @@ public class OrderEntity {
 
     @Enumerated(EnumType.STRING)
     private OrderStatus orderStatus;
+
+    public OrderEntity() {
+    }
 
     public OrderEntity(String userId, BigDecimal totalCost, Map<String, Integer> itemsCountMap, OrderStatus orderStatus) {
         this.userId = userId;

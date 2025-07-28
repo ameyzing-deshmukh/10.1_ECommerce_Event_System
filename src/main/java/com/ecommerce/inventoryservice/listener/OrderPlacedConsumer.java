@@ -16,13 +16,13 @@ public class OrderPlacedConsumer {
 
     @KafkaListener(topics = "${topic.order-placed}", groupId = "inventory-topics")
     public void consumeOrderPlacedEvent(String orderPlacedEvent) {
-        log.info("Order created event is getting consumed.");
-        log.info(orderPlacedEvent);
-        try {
-            inventoryService.checkInventory(orderPlacedEvent);
-        } catch (JsonProcessingException e) {
-            log.info(e.getMessage());
-//            throw new RuntimeException(e);
-        }
+        log.info("Order created event is getting consumed. Message: {}", orderPlacedEvent);
+        inventoryService.checkInventory(orderPlacedEvent);
+    }
+
+    @KafkaListener(topics = "${topic.inventory-reserved}", groupId = "inventory-topics")
+    public void consumeInventoryReservedEvent(String inventoryReservedEvent) {
+        log.info("Inventory Reserved event is getting consumed. Message: {}", inventoryReservedEvent);
+        inventoryService.updateInventory(inventoryReservedEvent);
     }
 }

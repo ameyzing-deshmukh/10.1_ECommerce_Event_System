@@ -1,11 +1,14 @@
 package com.ecommerce.inventoryservice.service;
 
+import com.ecommerce.common.events.AbstractEvent;
 import com.ecommerce.inventoryservice.entity.ItemInventoryEntity;
 import com.ecommerce.inventoryservice.events.InventoryFailedEvent;
 import com.ecommerce.inventoryservice.events.InventoryReservedEvent;
 import com.ecommerce.inventoryservice.producer.InventoryProducer;
 import com.ecommerce.inventoryservice.repository.ItemInventoryRepo;
+import com.ecommerce.orderservice.entity.OrderEntity;
 import com.ecommerce.orderservice.events.OrderPlacedEvent;
+import com.ecommerce.orderservice.repository.OrderRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -14,6 +17,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -25,24 +29,35 @@ public class InventoryService {
     private ItemInventoryRepo itemInventoryRepo;
 
     @Autowired
+    private OrderRepository orderRepository;
+
+    @Autowired
     private ObjectMapper objectMapper;
 
     @Autowired
     private InventoryProducer inventoryProducer;
 
-    public void checkInventory(String orderPlacedEvent) throws JsonProcessingException {
+    public void checkInventory(String orderPlacedEvent) {
         OrderPlacedEvent orderPlacedEventObj = getOrderPlacedEventObj(orderPlacedEvent);
         boolean isInventoryToReserve = isInventoryToReserve(orderPlacedEventObj);
         if (isInventoryToReserve) {
             //publish Inventory reserved event
             InventoryReservedEvent inventoryReservedEvent = new InventoryReservedEvent(Long.valueOf(orderPlacedEventObj.getOrderId()), orderPlacedEventObj.getUserId());
-            reservedInventory(objectMapper.writeValueAsString(inventoryReservedEvent));
+            reservedInventory(getMessage(inventoryReservedEvent));
             log.info("++++++++Inventory reserved event is published");
         } else {
             //publish Inventory failed event
             InventoryFailedEvent inventoryFailedEvent = new InventoryFailedEvent(Long.valueOf(orderPlacedEventObj.getOrderId()), orderPlacedEventObj.getUserId());
-            failedInventory(objectMapper.writeValueAsString(inventoryFailedEvent));
+            failedInventory(getMessage(inventoryFailedEvent));
             log.info("--------Failed inventory event is published");
+        }
+    }
+
+    private String getMessage(AbstractEvent inventoryReservedEvent) {
+        try {
+            return objectMapper.writeValueAsString(inventoryReservedEvent);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -76,8 +91,27 @@ public class InventoryService {
         return orderPlacedEventObj;
     }
 
-    public void updateInventory() {
-//Reduce the count in InventoryEntity table;
+    public void updateInventory(String inventoryReservedEvent) {
+        //Reduce the count in InventoryEntity table;
+        InventoryReservedEvent inventoryReservedEventObj = null;
+        try {
+            inventoryReservedEventObj = objectMapper.readValue(inventoryReservedEvent, InventoryReservedEvent.class);
+            Optional<OrderEntity> orderEntity = orderRepository.findById(inventoryReservedEventObj.getOrderId());
+            if (orderEntity.isPresent()) {
+                Map<String, Integer> itemCountMap = orderEntity.get().getItemsCountMap();
+                Set<String> itemIds = itemCountMap.keySet();
+                List<ItemInventoryEntity> inventoryItems = itemInventoryRepo.findAllById(itemIds);
+                for (ItemInventoryEntity item : inventoryItems) {
+                    int originalCount = item.getCount();
+                    int orderCount = itemCountMap.get(item.getItemId());
+                    item.setCount(originalCount - orderCount);
+                }
+                itemInventoryRepo.saveAll(inventoryItems);
+            }
+        } catch (JsonProcessingException e) {
+            log.info("Json parsing error: {}", e.getMessage());
+            throw new RuntimeException(e);
+        }
     }
 
     public void failedInventory(String message) {
