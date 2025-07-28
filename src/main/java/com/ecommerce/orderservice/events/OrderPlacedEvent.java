@@ -12,5 +12,6 @@ public class OrderPlacedEvent {
     private String userId;
     private BigDecimal totalCost;
     private Date createdAt;
-    private Map<String, Integer> itemAndCount;
+    private String orderStatus;
+    private Map<String, Integer> itemsCountMap;
 }

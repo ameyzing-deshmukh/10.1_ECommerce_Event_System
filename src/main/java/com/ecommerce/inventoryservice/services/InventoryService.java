@@ -32,14 +32,18 @@ public class InventoryService {
             log.info("Json parsing error: {}", e.getMessage());
             throw new RuntimeException(e);
         }
-        Map<String, Integer> itemAndCount = orderPlacedEventObj.getItemAndCount();
-        Set<String> itemIds = itemAndCount.keySet();
+        Map<String, Integer> itemsCountMap = orderPlacedEventObj.getItemsCountMap();
+        Set<String> itemIds = itemsCountMap.keySet();
         //if inventory count is less than order count for any of the item then return false and publish inventory failed event
         //if inventory count is greater than order count for any of the item then return true and publish inventory Reserved event
 
         List<ItemInventoryEntity> itemList = itemInventoryRepo.findAllById(itemIds);
+        if (itemList.size() < itemIds.size()) {
+            log.info("--------Failed inventory event is published");
+            return false;
+        }
         for (ItemInventoryEntity itemInventory : itemList) {
-            if (itemInventory.getCount() > itemAndCount.get(itemInventory.getItemId())) {
+            if (itemInventory.getCount() < itemsCountMap.get(itemInventory.getItemId())) {
                 //publish Inventory failed event
                 log.info("--------Failed inventory event is published");
                 return false;
