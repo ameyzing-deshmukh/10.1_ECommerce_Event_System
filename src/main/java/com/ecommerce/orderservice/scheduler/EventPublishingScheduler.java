@@ -1,7 +1,7 @@
 package com.ecommerce.orderservice.scheduler;
 
 import com.ecommerce.orderservice.entity.OutboxEventEntity;
-import com.ecommerce.orderservice.producer.EventProducer;
+import com.ecommerce.orderservice.producer.OrderPlacedEventProducer;
 import com.ecommerce.orderservice.repository.OutboxEventRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,25 +24,25 @@ public class EventPublishingScheduler {
     ObjectMapper objectMapper;
 
     @Autowired
-    private EventProducer eventProducer;
+    private OrderPlacedEventProducer eventProducer;
 
-    @Scheduled(fixedRate = 20000)
+    @Scheduled(fixedRate = 10000)
     @Transactional
-    public void publishEvent(){
-        List<OutboxEventEntity> eventList =  outboxEventRepository.findTop10ByIsProcessedFalseOrderByCreatedAtAsc();
+    public void publishEvent() {
+        List<OutboxEventEntity> eventList = outboxEventRepository.findTop10ByIsProcessedFalseOrderByCreatedAtAsc();
 
         try {
-            if(eventList.size()>0){
+            if (eventList.size() > 0) {
                 log.info(objectMapper.writeValueAsString(eventList));
-                for(OutboxEventEntity event: eventList){
-                    eventProducer.publishEvent(event);
+                for (OutboxEventEntity event : eventList) {
+                    eventProducer.publishEvent(event.getPayload());
                     event.setProcessed(true);
                 }
-            }else
+            } else
                 log.info("No entry yet");
         } catch (JsonProcessingException e) {
 
-           log.info(e.getMessage());
+            log.info(e.getMessage());
         }
 
         outboxEventRepository.saveAll(eventList);

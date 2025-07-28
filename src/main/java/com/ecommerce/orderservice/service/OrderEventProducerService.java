@@ -40,7 +40,7 @@ public class OrderEventProducerService {
     }
 
     private OrderEntity saveOrderEntity(Order order) {
-        OrderEntity orderEntity = new OrderEntity(order.getUserId(), order.getTotalCost(), order.getCreatedAt(), order.getItemsCountMap(), OrderStatus.PENDING);
+        OrderEntity orderEntity = new OrderEntity(order.getUserId(), order.getTotalCost(), order.getItemsCountMap(), OrderStatus.PENDING);
         orderRepository.save(orderEntity);
         return orderEntity;
     }

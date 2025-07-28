@@ -1,7 +1,6 @@
 package com.ecommerce.inventoryservice.listener;
 
-import com.ecommerce.inventoryservice.services.InventoryService;
-import com.ecommerce.orderservice.events.OrderPlacedEvent;
+import com.ecommerce.inventoryservice.service.InventoryService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
