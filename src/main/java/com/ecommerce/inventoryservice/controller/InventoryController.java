@@ -1,7 +1,7 @@
 package com.ecommerce.inventoryservice.controller;
 
 import com.ecommerce.inventoryservice.entity.ItemInventoryEntity;
-import com.ecommerce.inventoryservice.services.InventoryService;
+import com.ecommerce.inventoryservice.service.InventoryService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;

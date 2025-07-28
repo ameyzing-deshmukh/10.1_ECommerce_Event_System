@@ -1,6 +1,9 @@
-package com.ecommerce.inventoryservice.services;
+package com.ecommerce.inventoryservice.service;
 
 import com.ecommerce.inventoryservice.entity.ItemInventoryEntity;
+import com.ecommerce.inventoryservice.events.InventoryFailedEvent;
+import com.ecommerce.inventoryservice.events.InventoryReservedEvent;
+import com.ecommerce.inventoryservice.producer.InventoryProducer;
 import com.ecommerce.inventoryservice.repository.ItemInventoryRepo;
 import com.ecommerce.orderservice.events.OrderPlacedEvent;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -24,14 +27,21 @@ public class InventoryService {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private InventoryProducer inventoryProducer;
+
     public void checkInventory(String orderPlacedEvent) throws JsonProcessingException {
         OrderPlacedEvent orderPlacedEventObj = getOrderPlacedEventObj(orderPlacedEvent);
         boolean isInventoryToReserve = isInventoryToReserve(orderPlacedEventObj);
         if (isInventoryToReserve) {
             //publish Inventory reserved event
+            InventoryReservedEvent inventoryReservedEvent = new InventoryReservedEvent(Long.valueOf(orderPlacedEventObj.getOrderId()), orderPlacedEventObj.getUserId());
+            reservedInventory(objectMapper.writeValueAsString(inventoryReservedEvent));
             log.info("++++++++Inventory reserved event is published");
         } else {
             //publish Inventory failed event
+            InventoryFailedEvent inventoryFailedEvent = new InventoryFailedEvent(Long.valueOf(orderPlacedEventObj.getOrderId()), orderPlacedEventObj.getUserId());
+            failedInventory(objectMapper.writeValueAsString(inventoryFailedEvent));
             log.info("--------Failed inventory event is published");
         }
     }
@@ -67,15 +77,15 @@ public class InventoryService {
     }
 
     public void updateInventory() {
-
+//Reduce the count in InventoryEntity table;
     }
 
-    public void failedInventory() {
-
+    public void failedInventory(String message) {
+        inventoryProducer.publishToInventoryFailed(message);
     }
 
-    public void reservedInventory() {
-
+    public void reservedInventory(String message) {
+        inventoryProducer.publishToInventoryReserved(message);
     }
 
     //Update count of each item to 2
