@@ -17,6 +17,9 @@ public class InventoryProducer {
     @Value("${topic.inventory-failed}")
     private String inventoryFailedTopic;
 
+    @Value("${topic.order-cancelled}")
+    private String orderCancelledTopic;
+
     public InventoryProducer(KafkaTemplate<String, String> inventoryTemplate) {
         this.inventoryTemplate = inventoryTemplate;
     }
@@ -29,5 +32,10 @@ public class InventoryProducer {
     public void publishToInventoryFailed(String message) {
         log.info("Message: " + message + " is getting published to Kafka topic: {}", inventoryFailedTopic);
         inventoryTemplate.send(inventoryFailedTopic, message);
+    }
+
+    public void publishToOrderCancelled(String message) {
+        log.info("Message: " + message + " is getting published to Kafka topic: {}", orderCancelledTopic);
+        inventoryTemplate.send(orderCancelledTopic, message);
     }
 }

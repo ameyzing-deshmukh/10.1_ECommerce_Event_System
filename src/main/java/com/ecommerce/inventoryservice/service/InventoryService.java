@@ -1,6 +1,7 @@
 package com.ecommerce.inventoryservice.service;
 
 import com.ecommerce.common.events.AbstractEvent;
+import com.ecommerce.common.events.OrderCancelledEvent;
 import com.ecommerce.inventoryservice.entity.ItemInventoryEntity;
 import com.ecommerce.inventoryservice.events.InventoryFailedEvent;
 import com.ecommerce.inventoryservice.events.InventoryReservedEvent;
@@ -49,6 +50,8 @@ public class InventoryService {
             //publish Inventory failed event
             InventoryFailedEvent inventoryFailedEvent = new InventoryFailedEvent(Long.valueOf(orderPlacedEventObj.getOrderId()), orderPlacedEventObj.getUserId());
             failedInventory(getMessage(inventoryFailedEvent));
+            OrderCancelledEvent orderCancelledEvent = new OrderCancelledEvent(Long.valueOf(orderPlacedEventObj.getOrderId()), orderPlacedEventObj.getUserId());
+            orderCancelled(getMessage(orderCancelledEvent));
             log.info("--------Failed inventory event is published");
         }
     }
@@ -116,6 +119,10 @@ public class InventoryService {
 
     public void failedInventory(String message) {
         inventoryProducer.publishToInventoryFailed(message);
+    }
+
+    public void orderCancelled(String message) {
+        inventoryProducer.publishToOrderCancelled(message);
     }
 
     public void reservedInventory(String message) {
