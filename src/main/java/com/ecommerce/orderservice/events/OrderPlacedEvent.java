@@ -9,7 +9,7 @@ import java.util.Map;
 @Data
 public class OrderPlacedEvent {
     private int orderId;
-    private int userId;
+    private String userId;
     private BigDecimal totalCost;
     private Date createdAt;
     private Map<String, Integer> itemAndCount;

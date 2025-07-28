@@ -16,13 +16,14 @@ public class OrderEventProducerController {
 
     @Autowired
     private OrderEventProducerService producerService;
-    @PostMapping("/placed")
-    public ResponseEntity orderPlaced(@RequestBody Order order){
 
+    @PostMapping("/placed")
+    public ResponseEntity orderPlaced(@RequestBody Order order) {
+//ToDo: validate Order
         boolean result = producerService.storeOrder(order);
-        if(result)
-        return ResponseEntity.ok("Test success");
-        else{
+        if (result)
+            return ResponseEntity.ok("Test success");
+        else {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }

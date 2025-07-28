@@ -25,7 +25,13 @@ public class InventoryService {
     private ObjectMapper objectMapper;
 
     public boolean checkInventory(String orderPlacedEvent) throws JsonProcessingException {
-        OrderPlacedEvent orderPlacedEventObj = objectMapper.readValue(orderPlacedEvent, OrderPlacedEvent.class);
+        OrderPlacedEvent orderPlacedEventObj = null;
+        try {
+            orderPlacedEventObj = objectMapper.readValue(orderPlacedEvent, OrderPlacedEvent.class);
+        } catch (JsonProcessingException e) {
+            log.info("Json parsing error: {}", e.getMessage());
+            throw new RuntimeException(e);
+        }
         Map<String, Integer> itemAndCount = orderPlacedEventObj.getItemAndCount();
         Set<String> itemIds = itemAndCount.keySet();
         //if inventory count is less than order count for any of the item then return false and publish inventory failed event
@@ -58,13 +64,15 @@ public class InventoryService {
     }
 
     //Update count of each item to 2
-    public List<ItemInventoryEntity> addToInventory(List<ItemInventoryEntity> itemInventoryList) {
+    public int addToInventory(List<ItemInventoryEntity> itemInventoryList) {
 
         List<String> itemIds = itemInventoryList.stream().map(i -> i.getItemId()).collect(Collectors.toList());
 
         List<ItemInventoryEntity> entitiesToUpdate = itemInventoryRepo.findAllById(itemIds);
         entitiesToUpdate.forEach(entity -> entity.setCount(2));
+        for (String itemId : itemIds)
+            entitiesToUpdate.add(new ItemInventoryEntity(itemId, 2));
         itemInventoryRepo.saveAll(entitiesToUpdate);
-        return entitiesToUpdate;
+        return entitiesToUpdate.size();
     }
 }

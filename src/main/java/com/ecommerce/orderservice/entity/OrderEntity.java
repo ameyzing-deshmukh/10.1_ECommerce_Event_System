@@ -3,6 +3,8 @@ package com.ecommerce.orderservice.entity;
 import com.ecommerce.orderservice.model.OrderStatus;
 import jakarta.persistence.*;
 import lombok.Data;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -18,6 +20,7 @@ public class OrderEntity {
     private String userId;
     private BigDecimal totalCost;
     private LocalDateTime createdAt;
+    @JdbcTypeCode(SqlTypes.JSON)
     private Map<String, Integer> itemsCountMap;
 
     @Enumerated(EnumType.STRING)

@@ -17,4 +17,12 @@ public class ItemInventoryEntity {
     private String itemId;
 
     private int count;
+
+    public ItemInventoryEntity() {
+    }
+
+    public ItemInventoryEntity(String itemId, int count) {
+        this.itemId = itemId;
+        this.count = count;
+    }
 }
