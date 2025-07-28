@@ -4,6 +4,7 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Map;
 
 @Data
 public class Order {
@@ -11,4 +12,5 @@ public class Order {
     private String userId;
     private BigDecimal totalCost;
     private LocalDateTime createdAt;
+    private Map<String, Integer> items;
 }
