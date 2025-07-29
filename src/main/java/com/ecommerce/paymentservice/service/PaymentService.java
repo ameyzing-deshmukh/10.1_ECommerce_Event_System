@@ -1,5 +1,15 @@
 package com.ecommerce.paymentservice.service;
 
+import com.ecommerce.common.events.InventoryReleasedEvent;
+import com.ecommerce.common.events.OrderCancelledEvent;
+import com.ecommerce.common.model.InventoryReleaseReason;
+import com.ecommerce.common.model.OrderCancellationReason;
+import com.ecommerce.common.producer.CommonProducer;
+import com.ecommerce.common.util.CommonUtil;
+import com.ecommerce.paymentservice.events.PaymentConfirmedEvent;
+import com.ecommerce.paymentservice.events.PaymentFailedEvent;
+import com.ecommerce.paymentservice.model.PaymentFailedReason;
+import com.ecommerce.paymentservice.producer.PaymentEventProducer;
 import com.ecommerce.inventoryservice.events.InventoryReservedEvent;
 import com.ecommerce.orderservice.entity.OrderEntity;
 import com.ecommerce.orderservice.repository.OrderRepository;
@@ -28,6 +38,15 @@ public class PaymentService {
 
     @Autowired
     private OrderRepository orderRepository;
+
+    @Autowired
+    private PaymentEventProducer paymentEventProducer;
+
+    @Autowired
+    private CommonProducer commonProducer;
+
+    @Autowired
+    private CommonUtil commonUtil;
 
     InventoryReservedEvent reservedEvent;
 
@@ -59,41 +78,38 @@ public class PaymentService {
 
     public void initiatePaymentProcess(boolean isValidEvent) {
         if (isValidEvent) {
-            boolean isPaymentSuccessful = initiatePayment();
-            if (isPaymentSuccessful) {
-                publishPaymentConfirmedEvents();
+            PaymentInfoEntity paymentInfo = initiatePayment();
+            if (StringUtils.isNotBlank(paymentInfo.getPaymentId()) && (paymentInfo.getPaymentStatus().equals(PaymentStatus.PAYMENT_SUCCESSFUL) || paymentInfo.getPaymentStatus().equals(PaymentStatus.CASH_ON_DELIVERY))) {
+                publishPaymentConfirmedEvents(paymentInfo.getPaymentId());
             } else {
                 publishPaymentFailedEvents();
             }
         } else {
-            publishInvalidRequestEvents();
+            publishInvalidOrderEvents();
         }
     }
 
-    public boolean initiatePayment() {
+    public PaymentInfoEntity initiatePayment() {
 
         PaymentInfoEntity paymentInfoEntity = buildPaymentInfoEntity();
-        boolean paymentResult = completePayment(paymentInfoEntity);
-        savePaymentInfo(paymentInfoEntity, paymentResult);
-        return paymentResult;
+        completePayment(paymentInfoEntity);
+        savePaymentInfo(paymentInfoEntity);
+        return paymentInfoEntity;
     }
 
-    private boolean completePayment(PaymentInfoEntity paymentInfoEntity) {
+    private void completePayment(PaymentInfoEntity paymentInfoEntity) {
         //ToDo: Need actual payment gateway logic here.
         if (reservedEvent.getUserId().equals("Pranali101")) {
             paymentInfoEntity.setPaymentTs(LocalDateTime.now());
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    private void savePaymentInfo(PaymentInfoEntity paymentInfoEntity, boolean paymentResult) {
-        if (paymentResult) {
             paymentInfoEntity.setPaymentStatus(PaymentStatus.PAYMENT_SUCCESSFUL);
+        } else if (reservedEvent.getUserId().equals("Pranali102")) {
+            paymentInfoEntity.setPaymentStatus(PaymentStatus.CASH_ON_DELIVERY);
         } else {
             paymentInfoEntity.setPaymentStatus(PaymentStatus.PAYMENT_FAILED);
         }
+    }
+
+    private void savePaymentInfo(PaymentInfoEntity paymentInfoEntity) {
         log.info("Time - {}", paymentInfoEntity.getPaymentTs());
         paymentInfoEntityRepo.save(paymentInfoEntity);
     }
@@ -112,37 +128,47 @@ public class PaymentService {
         return paymentInfoEntity;
     }
 
-    public void publishPaymentConfirmedEvents() {
+    public void publishInvalidOrderEvents() {
+        log.info("--------Invalid Request Events are published. ");
+        publishOrderCancelledEvent(OrderCancellationReason.INVALID_ORDER);
+        publishInventoryReleasedEvent(InventoryReleaseReason.INVALID_ORDER);
+    }
+
+    public void publishPaymentConfirmedEvents(String paymentId) {
         log.info("++++++++Payment Confirmed Events are published. ");
-        publishPaymentConfirmedEvent("publishPaymentConfirmedEvent");
+        publishPaymentConfirmedEvent(paymentId);
     }
 
     public void publishPaymentFailedEvents() {
         log.info("--------Payment Failed Events are published. ");
-        publishPaymentFailedEvent("publishPaymentFailedEvent");
-        publishOrderCancelledEvent("publishOrderCancelledEvent");
-        publishInventoryReleasedEvent("publishInventoryReleasedEvent");
+        publishPaymentFailedEvent(PaymentFailedReason.MERCHANT_SERVER_DOWN);
+        publishOrderCancelledEvent(OrderCancellationReason.PAYMENT_FAILED);
+        publishInventoryReleasedEvent(InventoryReleaseReason.PAYMENT_FAILED);
     }
 
-    public void publishPaymentFailedEvent(String message) {
-        log.info("--------Payment Failed Event is published. {}", message);
+    public void publishPaymentConfirmedEvent(String paymentId) {
+        PaymentConfirmedEvent event = new PaymentConfirmedEvent(reservedEvent.getOrderId(), reservedEvent.getUserId(), paymentId);
+        log.info("++++++++Payment Confirmed Event is published. {}", commonUtil.getMessage(event));
+        paymentEventProducer.publishPaymentConfirmedEvent(commonUtil.getMessage(event));
     }
 
-    public void publishOrderCancelledEvent(String message) {
-        log.info("--------Order Cancelled Event is published. {}", message);
+    public void publishPaymentFailedEvent(PaymentFailedReason reason) {
+        PaymentFailedEvent event = new PaymentFailedEvent(reservedEvent.getOrderId(), reservedEvent.getUserId(), reason);
+        log.info("--------Payment Failed Event is published. {}", commonUtil.getMessage(event));
+        paymentEventProducer.publishPaymentFailedEvent(commonUtil.getMessage(event));
     }
 
-    public void publishInventoryReleasedEvent(String message) {
-        log.info("--------Inventory Released Event is published. {}", message);
+    public void publishOrderCancelledEvent(OrderCancellationReason reason) {
+        OrderCancelledEvent orderCancelledEvent = new OrderCancelledEvent(reservedEvent.getOrderId(), reservedEvent.getUserId(), reason);
+        log.info("--------Order Cancelled Event is published. {}", commonUtil.getMessage(orderCancelledEvent));
+        commonProducer.publishOrderCancelledEvent(commonUtil.getMessage(orderCancelledEvent));
     }
 
-    public void publishPaymentConfirmedEvent(String message) {
-        log.info("++++++++Payment Confirmed Event is published. {}", message);
+    public void publishInventoryReleasedEvent(InventoryReleaseReason reason) {
+        InventoryReleasedEvent inventoryReleasedEvent = new InventoryReleasedEvent(reservedEvent.getOrderId(), reservedEvent.getUserId(), reason);
+        log.info("--------Inventory Released Event is published. {}", commonUtil.getMessage(inventoryReleasedEvent));
+        commonProducer.publishInventoryReleasedEvent(commonUtil.getMessage(inventoryReleasedEvent));
     }
 
-    public void publishInvalidRequestEvents() {
-        log.info("--------Invalid Request Events are published. ");
-        publishOrderCancelledEvent("publishOrderCancelledEvent");
-        publishInventoryReleasedEvent("publishInventoryReleasedEvent");
-    }
+
 }

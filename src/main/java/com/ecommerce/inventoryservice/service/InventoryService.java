@@ -1,7 +1,9 @@
 package com.ecommerce.inventoryservice.service;
 
-import com.ecommerce.common.events.AbstractEvent;
 import com.ecommerce.common.events.OrderCancelledEvent;
+import com.ecommerce.common.model.OrderCancellationReason;
+import com.ecommerce.common.producer.CommonProducer;
+import com.ecommerce.common.util.CommonUtil;
 import com.ecommerce.inventoryservice.entity.ItemInventoryEntity;
 import com.ecommerce.inventoryservice.events.InventoryFailedEvent;
 import com.ecommerce.inventoryservice.events.InventoryReservedEvent;
@@ -38,29 +40,27 @@ public class InventoryService {
     @Autowired
     private InventoryProducer inventoryProducer;
 
+    @Autowired
+    private CommonProducer commonProducer;
+
+    @Autowired
+    private CommonUtil commonUtil;
+
     public void checkInventory(String orderPlacedEvent) {
         OrderPlacedEvent orderPlacedEventObj = getOrderPlacedEventObj(orderPlacedEvent);
         boolean isInventoryToReserve = isInventoryToReserve(orderPlacedEventObj);
         if (isInventoryToReserve) {
             //publish Inventory reserved event
-            InventoryReservedEvent inventoryReservedEvent = new InventoryReservedEvent(Long.valueOf(orderPlacedEventObj.getOrderId()), orderPlacedEventObj.getUserId());
-            reservedInventory(getMessage(inventoryReservedEvent));
+            InventoryReservedEvent inventoryReservedEvent = new InventoryReservedEvent((long) orderPlacedEventObj.getOrderId(), orderPlacedEventObj.getUserId());
+            reservedInventory(commonUtil.getMessage(inventoryReservedEvent));
             log.info("++++++++Inventory reserved event is published");
         } else {
             //publish Inventory failed event
-            InventoryFailedEvent inventoryFailedEvent = new InventoryFailedEvent(Long.valueOf(orderPlacedEventObj.getOrderId()), orderPlacedEventObj.getUserId());
-            failedInventory(getMessage(inventoryFailedEvent));
-            OrderCancelledEvent orderCancelledEvent = new OrderCancelledEvent(Long.valueOf(orderPlacedEventObj.getOrderId()), orderPlacedEventObj.getUserId());
-            orderCancelled(getMessage(orderCancelledEvent));
+            InventoryFailedEvent inventoryFailedEvent = new InventoryFailedEvent((long) orderPlacedEventObj.getOrderId(), orderPlacedEventObj.getUserId());
+            failedInventory(commonUtil.getMessage(inventoryFailedEvent));
+            OrderCancelledEvent orderCancelledEvent = new OrderCancelledEvent((long) orderPlacedEventObj.getOrderId(), orderPlacedEventObj.getUserId(), OrderCancellationReason.INVENTORY_SHORTAGE);
+            orderCancelled(commonUtil.getMessage(orderCancelledEvent));
             log.info("--------Failed inventory event is published");
-        }
-    }
-
-    private String getMessage(AbstractEvent inventoryReservedEvent) {
-        try {
-            return objectMapper.writeValueAsString(inventoryReservedEvent);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
         }
     }
 
@@ -84,7 +84,7 @@ public class InventoryService {
     }
 
     private OrderPlacedEvent getOrderPlacedEventObj(String orderPlacedEvent) {
-        OrderPlacedEvent orderPlacedEventObj = null;
+        OrderPlacedEvent orderPlacedEventObj;
         try {
             orderPlacedEventObj = objectMapper.readValue(orderPlacedEvent, OrderPlacedEvent.class);
         } catch (JsonProcessingException e) {
@@ -96,7 +96,7 @@ public class InventoryService {
 
     public void updateInventory(String inventoryReservedEvent) {
         //Reduce the count in InventoryEntity table;
-        InventoryReservedEvent inventoryReservedEventObj = null;
+        InventoryReservedEvent inventoryReservedEventObj;
         try {
             log.info("Inventory is getting updated. ");
             inventoryReservedEventObj = objectMapper.readValue(inventoryReservedEvent, InventoryReservedEvent.class);
@@ -123,7 +123,7 @@ public class InventoryService {
     }
 
     public void orderCancelled(String message) {
-        inventoryProducer.publishToOrderCancelled(message);
+        commonProducer.publishOrderCancelledEvent(message);
     }
 
     public void reservedInventory(String message) {
@@ -133,7 +133,7 @@ public class InventoryService {
     //Update count of each item to 2
     public int addToInventory(List<ItemInventoryEntity> itemInventoryList) {
 
-        List<String> itemIds = itemInventoryList.stream().map(i -> i.getItemId()).collect(Collectors.toList());
+        List<String> itemIds = itemInventoryList.stream().map(ItemInventoryEntity::getItemId).collect(Collectors.toList());
 
         List<ItemInventoryEntity> entitiesToUpdate = itemInventoryRepo.findAllById(itemIds);
         entitiesToUpdate.forEach(entity -> entity.setCount(2));

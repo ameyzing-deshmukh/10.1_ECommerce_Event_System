@@ -9,16 +9,13 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class InventoryProducer {
 
-    private KafkaTemplate<String, String> inventoryTemplate;
+    private final KafkaTemplate<String, String> inventoryTemplate;
 
     @Value("${topic.inventory-reserved}")
     private String inventoryReservedTopic;
 
     @Value("${topic.inventory-failed}")
     private String inventoryFailedTopic;
-
-    @Value("${topic.order-cancelled}")
-    private String orderCancelledTopic;
 
     public InventoryProducer(KafkaTemplate<String, String> inventoryTemplate) {
         this.inventoryTemplate = inventoryTemplate;
@@ -34,8 +31,4 @@ public class InventoryProducer {
         inventoryTemplate.send(inventoryFailedTopic, message);
     }
 
-    public void publishToOrderCancelled(String message) {
-        log.info("Message: " + message + " is getting published to Kafka topic: {}", orderCancelledTopic);
-        inventoryTemplate.send(orderCancelledTopic, message);
-    }
 }
