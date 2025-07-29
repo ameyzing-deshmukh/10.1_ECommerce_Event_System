@@ -98,6 +98,7 @@ public class InventoryService {
         //Reduce the count in InventoryEntity table;
         InventoryReservedEvent inventoryReservedEventObj = null;
         try {
+            log.info("Inventory is getting updated. ");
             inventoryReservedEventObj = objectMapper.readValue(inventoryReservedEvent, InventoryReservedEvent.class);
             Optional<OrderEntity> orderEntity = orderRepository.findById(inventoryReservedEventObj.getOrderId());
             if (orderEntity.isPresent()) {
@@ -112,7 +113,7 @@ public class InventoryService {
                 itemInventoryRepo.saveAll(inventoryItems);
             }
         } catch (JsonProcessingException e) {
-            log.info("Json parsing error: {}", e.getMessage());
+            log.error("Json parsing error: {}", e.getMessage());
             throw new RuntimeException(e);
         }
     }

@@ -1,7 +1,6 @@
-package com.ecommerce.inventoryservice.listener;
+package com.ecommerce.inventoryservice.consumer;
 
 import com.ecommerce.inventoryservice.service.InventoryService;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
