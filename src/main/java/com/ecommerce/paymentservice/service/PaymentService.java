@@ -1,6 +1,11 @@
 package com.ecommerce.paymentservice.service;
 
 import com.ecommerce.inventoryservice.events.InventoryReservedEvent;
+import com.ecommerce.orderservice.entity.OrderEntity;
+import com.ecommerce.orderservice.repository.OrderRepository;
+import com.ecommerce.paymentservice.entity.PaymentInfoEntity;
+import com.ecommerce.paymentservice.model.PaymentStatus;
+import com.ecommerce.paymentservice.repository.PaymentInfoEntityRepo;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.common.util.StringUtils;
@@ -8,12 +13,21 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.util.Optional;
+
 @Slf4j
 @Service
 public class PaymentService {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private PaymentInfoEntityRepo paymentInfoEntityRepo;
+
+    @Autowired
+    private OrderRepository orderRepository;
 
     InventoryReservedEvent reservedEvent;
 
@@ -57,8 +71,45 @@ public class PaymentService {
     }
 
     public boolean initiatePayment() {
+
+        PaymentInfoEntity paymentInfoEntity = buildPaymentInfoEntity();
+        boolean paymentResult = completePayment(paymentInfoEntity);
+        savePaymentInfo(paymentInfoEntity, paymentResult);
+        return paymentResult;
+    }
+
+    private boolean completePayment(PaymentInfoEntity paymentInfoEntity) {
         //ToDo: Need actual payment gateway logic here.
-        return reservedEvent.getUserId().equals("Pranali101");
+        if (reservedEvent.getUserId().equals("Pranali101")) {
+            paymentInfoEntity.setPaymentTs(LocalDateTime.now());
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    private void savePaymentInfo(PaymentInfoEntity paymentInfoEntity, boolean paymentResult) {
+        if (paymentResult) {
+            paymentInfoEntity.setPaymentStatus(PaymentStatus.PAYMENT_SUCCESSFUL);
+        } else {
+            paymentInfoEntity.setPaymentStatus(PaymentStatus.PAYMENT_FAILED);
+        }
+        log.info("Time - {}", paymentInfoEntity.getPaymentTs());
+        paymentInfoEntityRepo.save(paymentInfoEntity);
+    }
+
+    private PaymentInfoEntity buildPaymentInfoEntity() {
+        PaymentInfoEntity paymentInfoEntity = new PaymentInfoEntity();
+        Optional<OrderEntity> orderEntity = orderRepository.findById(reservedEvent.getOrderId());
+        if (orderEntity.isPresent()) {
+            paymentInfoEntity.setOrderId(orderEntity.get().getOrderId());
+            paymentInfoEntity.setUserId(orderEntity.get().getUserId());
+            paymentInfoEntity.setPaymentId("Dummy" + orderEntity.get().getOrderId());
+            paymentInfoEntity.setPaymentAmount(orderEntity.get().getTotalCost());
+        } else {
+            log.info("Order details not found");
+        }
+        return paymentInfoEntity;
     }
 
     public void publishPaymentConfirmedEvents() {

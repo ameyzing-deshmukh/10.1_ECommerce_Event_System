@@ -13,7 +13,7 @@ public class PaymentServiceConsumer {
     @Autowired
     private PaymentService paymentService;
 
-    @KafkaListener(topics = "${topic.inventory-reserved}", groupId = "inventory-topics")
+    @KafkaListener(topics = "${topic.inventory-reserved}", groupId = "payment-topics")
     public void consumeInventoryReservedEvent(String inventoryReservedEvent) {
         log.info("Inventory Reserved event is getting consumed. Message: {}", inventoryReservedEvent);
         paymentService.validateAndInitiatePaymentProcess(inventoryReservedEvent);
