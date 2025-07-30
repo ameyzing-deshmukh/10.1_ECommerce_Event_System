@@ -13,6 +13,9 @@ public class ShippingProducer {
     @Value("${topic.shipping-initiated}")
     private String shippingInitiatedTopic;
 
+    @Value("${topic.shipping-completed}")
+    private String shippingCompletedTopic;
+
     public ShippingProducer(KafkaTemplate<String, String> shippingTemplate) {
         this.shippingTemplate = shippingTemplate;
     }
@@ -20,5 +23,10 @@ public class ShippingProducer {
     public void publishShippingInitiatedEvent(String message) {
         log.info("Message: " + message + " is getting published to Kafka topic: {}", shippingInitiatedTopic);
         shippingTemplate.send(shippingInitiatedTopic, message);
+    }
+
+    public void publishShippingCompletedEvent(String message) {
+        log.info("Message: " + message + " is getting published to Kafka topic: {}", shippingCompletedTopic);
+        shippingTemplate.send(shippingCompletedTopic, message);
     }
 }

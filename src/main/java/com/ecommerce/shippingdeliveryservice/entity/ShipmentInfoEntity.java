@@ -25,11 +25,13 @@ public class ShipmentInfoEntity {
     @CreationTimestamp
     private LocalDateTime createTs;
     private LocalDate estimatedDateOfDelivery;
+    private Long orderId;
+    private String userId;
 
     public ShipmentInfoEntity() {
     }
 
-    public ShipmentInfoEntity(String shippingId, String receiverName, String shippingPartnerName, String shippingAddress, LocalDateTime shippingDate, ShippingStatus status, LocalDate estimatedDateOfDelivery) {
+    public ShipmentInfoEntity(String shippingId, String receiverName, String shippingPartnerName, String shippingAddress, LocalDateTime shippingDate, ShippingStatus status, LocalDate estimatedDateOfDelivery, Long orderId, String userId) {
         this.shippingId = shippingId;
         this.receiverName = receiverName;
         this.shippingPartnerName = shippingPartnerName;
@@ -37,5 +39,7 @@ public class ShipmentInfoEntity {
         this.shippingDate = shippingDate;
         this.status = status;
         this.estimatedDateOfDelivery = estimatedDateOfDelivery;
+        this.orderId = orderId;
+        this.userId = userId;
     }
 }

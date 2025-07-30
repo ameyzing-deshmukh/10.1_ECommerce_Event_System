@@ -7,14 +7,14 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-public class ShippingInitiatedEvent extends AbstractEvent {
+public class ShippingCompletedEvent extends AbstractEvent {
     private String shippingId;
     private String shippingPartnerName;
     private String shippingAddress;
     private LocalDateTime shippingDate;
     private ShippingStatus status;
 
-    public ShippingInitiatedEvent(Long orderId, String userId, String shippingId, String shippingPartnerName, String shippingAddress, LocalDateTime shippingDate, ShippingStatus status) {
+    public ShippingCompletedEvent(Long orderId, String userId, String shippingId, String shippingPartnerName, String shippingAddress, LocalDateTime shippingDate, ShippingStatus status) {
         super(orderId, userId);
         this.shippingId = shippingId;
         this.shippingPartnerName = shippingPartnerName;
@@ -23,7 +23,7 @@ public class ShippingInitiatedEvent extends AbstractEvent {
         this.status = status;
     }
 
-    public ShippingInitiatedEvent() {
+    public ShippingCompletedEvent() {
         super();
     }
 }

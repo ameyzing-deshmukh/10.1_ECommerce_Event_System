@@ -1,5 +1,8 @@
 package com.ecommerce.shippingdeliveryservice.service;
 
+import com.ecommerce.common.events.AbstractEvent;
+import com.ecommerce.shippingdeliveryservice.events.ShippingCompletedEvent;
+import com.ecommerce.shippingdeliveryservice.events.ShippingInitiatedEvent;
 import com.ecommerce.common.util.CommonUtil;
 import com.ecommerce.paymentservice.events.PaymentConfirmedEvent;
 import com.ecommerce.shippingdeliveryservice.entity.ShipmentInfoEntity;
@@ -23,7 +26,7 @@ import java.util.stream.Collectors;
 @Service
 public class ShippingService {
 
-    private PaymentConfirmedEvent event;
+    private PaymentConfirmedEvent paymentConfirmedEventObj;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -49,26 +52,26 @@ public class ShippingService {
     private void initiateShipping() {
         //ToDo: Need to implement real shipping logic
         persistShipmentInfo();
-        publishShipmentEvent();
     }
 
     private void persistShipmentInfo() {
-        shippingRepo.save(new ShipmentInfoEntity("shipment" + event.getOrderId(), event.getUserId(), "DTDC", "Kharadi", LocalDateTime.now(), ShippingStatus.INITIATED, LocalDate.now().plusDays(10)));
+        ShipmentInfoEntity entity = new ShipmentInfoEntity("shipment" + paymentConfirmedEventObj.getOrderId(), paymentConfirmedEventObj.getUserId(), "DTDC", "Kharadi", LocalDateTime.now(), ShippingStatus.INITIATED, LocalDate.now().plusDays(10), paymentConfirmedEventObj.getOrderId(), paymentConfirmedEventObj.getUserId());
+        shippingRepo.save(entity);
+        publishShipmentInitiatedEvent(entity);
     }
 
-    private void publishShipmentEvent() {
-
-        String message = commonUtil.getMessage(event);
-        shippingProducer.publishShippingInitiatedEvent(message);
+    private void publishShipmentInitiatedEvent(ShipmentInfoEntity entity) {
+        ShippingInitiatedEvent shippingInitiatedEvent = new ShippingInitiatedEvent(paymentConfirmedEventObj.getOrderId(), paymentConfirmedEventObj.getUserId(), entity.getShippingId(), entity.getShippingPartnerName(), entity.getShippingAddress(), entity.getShippingDate(), entity.getStatus());
+        shippingProducer.publishShippingInitiatedEvent(commonUtil.getMessage(shippingInitiatedEvent));
     }
 
     private boolean validateEvent() {
-        return StringUtils.isNotBlank(event.getPaymentId());
+        return StringUtils.isNotBlank(paymentConfirmedEventObj.getPaymentId());
     }
 
     private void extractObject(String paymentConfirmedEvent) {
         try {
-            event = objectMapper.readValue(paymentConfirmedEvent, PaymentConfirmedEvent.class);
+            paymentConfirmedEventObj = objectMapper.readValue(paymentConfirmedEvent, PaymentConfirmedEvent.class);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
@@ -77,10 +80,13 @@ public class ShippingService {
     @Scheduled(fixedRate = 20000)
     public void simulateShipmentCompletion() {
         List<ShipmentInfoEntity> initiatedShipments = shippingRepo.findAllByStatus(ShippingStatus.INITIATED);
-
+        ShippingCompletedEvent shippingCompletedEvent;
         if (initiatedShipments.size() > 0) {
             for (ShipmentInfoEntity shipment : initiatedShipments) {
                 shipment.setStatus(ShippingStatus.COMPLETED);
+                //ToDo: Join order and shipment tables
+                shippingCompletedEvent = new ShippingCompletedEvent(shipment.getOrderId(), shipment.getUserId(), shipment.getShippingId(), shipment.getShippingPartnerName(), shipment.getShippingAddress(), shipment.getShippingDate(), shipment.getStatus());
+                shippingProducer.publishShippingCompletedEvent(createShippingCompletionEvent(shippingCompletedEvent));
             }
             log.info("Shipment with ids {} is completed now.", initiatedShipments.stream().map(s -> s.getShippingId()).collect(Collectors.joining(", ")));
             shippingRepo.saveAll(initiatedShipments);
@@ -88,5 +94,9 @@ public class ShippingService {
             log.info("No shipment is initiated yet.");
         }
 
+    }
+
+    private String createShippingCompletionEvent(AbstractEvent event) {
+        return commonUtil.getMessage(event);
     }
 }
