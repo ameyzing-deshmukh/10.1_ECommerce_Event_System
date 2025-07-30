@@ -11,10 +11,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.common.util.StringUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -60,11 +63,7 @@ public class ShippingService {
     }
 
     private boolean validateEvent() {
-        if (StringUtils.isNotBlank(event.getPaymentId())) {
-            return true;
-        } else {
-            return false;
-        }
+        return StringUtils.isNotBlank(event.getPaymentId());
     }
 
     private void extractObject(String paymentConfirmedEvent) {
@@ -73,5 +72,21 @@ public class ShippingService {
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @Scheduled(fixedRate = 20000)
+    public void simulateShipmentCompletion() {
+        List<ShipmentInfoEntity> initiatedShipments = shippingRepo.findAllByStatus(ShippingStatus.INITIATED);
+
+        if (initiatedShipments.size() > 0) {
+            for (ShipmentInfoEntity shipment : initiatedShipments) {
+                shipment.setStatus(ShippingStatus.COMPLETED);
+            }
+            log.info("Shipment with ids {} is completed now.", initiatedShipments.stream().map(s -> s.getShippingId()).collect(Collectors.joining(", ")));
+            shippingRepo.saveAll(initiatedShipments);
+        } else {
+            log.info("No shipment is initiated yet.");
+        }
+
     }
 }
